@@ -311,7 +311,7 @@ double makeDrum(
     const std::string& type,
     double t)
 {
-    if (type == "KICK")
+    if (type == "KICK" || type == "BASS_DRUM")
         return kick(t);
 
     if (type == "SNARE")
