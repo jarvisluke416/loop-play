@@ -394,80 +394,112 @@ void PlaySong()
         std::vector<NoteEvent> notes;
         std::vector<DrumEvent> drums;
 
-        double lastTime = 0.0;
+        // Default tempo
+        // Default settings
+        double tempo = 120.0;
+        double loopLengthBeats = 4.0;
 
         std::string command;
 
         while (songFile >> command)
+    {
+        if (command == "TEMPO")
+    {
+        songFile >> tempo;
+
+        if (tempo <= 0)
+            tempo = 120.0;
+    }
+
+    else if (command == "LENGTH")
+    {
+        songFile >> loopLengthBeats;
+
+        if (loopLengthBeats <= 0)
+            loopLengthBeats = 4.0;
+    }
+
+        else if (command == "NOTE")
+    {
+        std::string noteName;
+        double startBeat;
+        double durationBeats;
+
+        songFile >>
+            noteName >>
+            startBeat >>
+            durationBeats;
+
+        double frequency =
+            noteFrequency(noteName);
+
+        if (frequency > 0.0)
         {
-            if (command == "TEMPO")
-            {
-                double tempo;
-                songFile >> tempo;
-            }
+            double secondsPerBeat =
+                60.0 / tempo;
 
-            else if (command == "NOTE")
-            {
-                std::string noteName;
-                double start;
-                double duration;
+            double start =
+                startBeat *
+                secondsPerBeat;
 
-                songFile >>
-                    noteName >>
-                    start >>
-                    duration;
+            double duration =
+                durationBeats *
+                secondsPerBeat;
 
-                double frequency =
-                    noteFrequency(noteName);
-
-                if (frequency > 0.0)
-                {
-                    notes.push_back({
-                        start,
-                        duration,
-                        frequency
-                    });
-
-                    lastTime =
-                        std::max(
-                            lastTime,
-                            start + duration
-                        );
-                }
-            }
-
-            else if (command == "DRUM")
-            {
-                std::string drumType;
-                double start;
-
-                songFile >>
-                    drumType >>
-                    start;
-
-                drums.push_back({
-                    start,
-                    drumType
-                });
-
-                lastTime =
-                    std::max(
-                        lastTime,
-                        start + 2.0
-                    );
-            }
+            notes.push_back({
+                start,
+                duration,
+                frequency
+            });
         }
+    }
 
-        songFile.close();
+    else if (command == "DRUM")
+    {
+        std::string drumType;
+        double startBeat;
 
-        int totalSamples =
-            static_cast<int>(
-                (lastTime + 0.5)
-                * SAMPLE_RATE
-            );
+        songFile >>
+            drumType >>
+            startBeat;
 
-        if (totalSamples <= 0)
-            break;
+        double secondsPerBeat =
+            60.0 / tempo;
+
+        double start =
+            startBeat *
+            secondsPerBeat;
+
+        drums.push_back({
+            start,
+            drumType
+        });
+    }
+}
+
+songFile.close();
+
+// ----------------------------------------------------
+// EXACT LOOP LENGTH
+// ----------------------------------------------------
+
+double secondsPerBeat =
+    60.0 / tempo;
+
+double loopDuration =
+    loopLengthBeats *
+    secondsPerBeat;
+
+// The audio buffer is exactly the loop length.
+// Drum tails do NOT extend the loop.
+int totalSamples =
+    static_cast<int>(
+        loopDuration *
+        SAMPLE_RATE
+    );
+
+if (totalSamples <= 0)
+    break;
 
         // ----------------------------------------------------
         // AUDIO BUFFER
@@ -513,8 +545,10 @@ void PlaySong()
                 double envelope = 1.0;
 
                 if (time < 0.01)
+                {
                     envelope =
                         time / 0.01;
+                }
 
                 double remaining =
                     note.duration - time;
