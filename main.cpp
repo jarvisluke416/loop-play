@@ -996,12 +996,12 @@ LRESULT CALLBACK WindowProcedure(
         );
 
     const char* titles[] =
-    {
-        "CONTROLS",
-        "MELODY",
-        "DRUMS",
-        "EFFECTS"
-    };
+{
+    "I",
+    "II",
+    "III",
+    "IV"
+};
 
     for (int i = 0; i < 4; i++)
     {
