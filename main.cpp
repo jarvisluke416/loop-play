@@ -1,14 +1,14 @@
 #include <windows.h>
 #include <mmsystem.h>
 
+#include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <fstream>
 #include <random>
 #include <string>
-#include <vector>
-#include <algorithm>
 #include <thread>
-#include <atomic>
+#include <vector>
 
 #pragma comment(lib, "winmm.lib")
 
@@ -25,7 +25,8 @@ const COLORREF BUTTON = RGB(55, 55, 65);
 const COLORREF BUTTON_HOVER = RGB(70, 70, 85);
 const COLORREF ACCENT = RGB(80, 150, 255);
 const COLORREF TEXT = RGB(240, 240, 245);
-
+const COLORREF COLUMN = RGB(32, 32, 38);
+const COLORREF COLUMN_BORDER = RGB(55, 55, 65);
 // ------------------------------------------------------------
 // GLOBAL STATE
 // ------------------------------------------------------------
@@ -857,156 +858,185 @@ LRESULT CALLBACK WindowProcedure(
         }
 
         case WM_PAINT:
+{
+    PAINTSTRUCT ps;
+
+    HDC dc = BeginPaint(
+        window,
+        &ps
+    );
+
+    RECT rect;
+
+    GetClientRect(
+        window,
+        &rect
+    );
+
+    // ----------------------------------------------------
+    // BACKGROUND
+    // ----------------------------------------------------
+
+    HBRUSH backgroundBrush =
+        CreateSolidBrush(BACKGROUND);
+
+    FillRect(
+        dc,
+        &rect,
+        backgroundBrush
+    );
+
+    DeleteObject(backgroundBrush);
+
+    // ----------------------------------------------------
+    // FOUR COLUMNS
+    // ----------------------------------------------------
+
+    int columnWidth =
+        rect.right / 4;
+
+    for (int i = 0; i < 4; i++)
+    {
+        RECT columnRect =
         {
-            PAINTSTRUCT ps;
+            i * columnWidth + 5,
+            5,
+            (i + 1) * columnWidth - 5,
+            rect.bottom - 5
+        };
 
-            HDC dc =
-                BeginPaint(
-                    window,
-                    &ps
-                );
+        HBRUSH columnBrush =
+            CreateSolidBrush(COLUMN);
 
-            RECT rect;
+        FillRect(
+            dc,
+            &columnRect,
+            columnBrush
+        );
 
-            GetClientRect(
-                window,
-                &rect
+        DeleteObject(columnBrush);
+
+        // Column border
+        HPEN borderPen =
+            CreatePen(
+                PS_SOLID,
+                1,
+                COLUMN_BORDER
             );
 
-            HBRUSH backgroundBrush =
-                CreateSolidBrush(
-                    BACKGROUND
-                );
-
-            FillRect(
+        HPEN oldPen =
+            (HPEN)SelectObject(
                 dc,
-                &rect,
-                backgroundBrush
+                borderPen
             );
 
-            DeleteObject(
-                backgroundBrush
-            );
-
-            // Title
-            SetTextColor(
+        HBRUSH oldBrush =
+            (HBRUSH)SelectObject(
                 dc,
-                TEXT
+                GetStockObject(NULL_BRUSH)
             );
 
-            SetBkMode(
-                dc,
-                TRANSPARENT
-            );
+        Rectangle(
+            dc,
+            columnRect.left,
+            columnRect.top,
+            columnRect.right,
+            columnRect.bottom
+        );
 
-            HFONT titleFont =
-                CreateFont(
-                    36,
-                    0,
-                    0,
-                    0,
-                    FW_BOLD,
-                    FALSE,
-                    FALSE,
-                    FALSE,
-                    DEFAULT_CHARSET,
-                    OUT_DEFAULT_PRECIS,
-                    CLIP_DEFAULT_PRECIS,
-                    DEFAULT_QUALITY,
-                    DEFAULT_PITCH,
-                    "Segoe UI"
-                );
+        SelectObject(
+            dc,
+            oldBrush
+        );
 
-            HFONT oldFont =
-                (HFONT)SelectObject(
-                    dc,
-                    titleFont
-                );
+        SelectObject(
+            dc,
+            oldPen
+        );
 
-            RECT titleRect =
-                {
-                    0,
-                    35,
-                    rect.right,
-                    90
-                };
+        DeleteObject(borderPen);
+    }
 
-            DrawText(
-                dc,
-                "C++ SONG MAKER",
-                -1,
-                &titleRect,
-                DT_CENTER |
-                DT_SINGLELINE
-            );
+    // ----------------------------------------------------
+    // COLUMN TITLES
+    // ----------------------------------------------------
 
-            SelectObject(
-                dc,
-                oldFont
-            );
+    SetTextColor(
+        dc,
+        TEXT
+    );
 
-            DeleteObject(
-                titleFont
-            );
+    SetBkMode(
+        dc,
+        TRANSPARENT
+    );
 
-            // Subtitle
-            HFONT subtitleFont =
-                CreateFont(
-                    18,
-                    0,
-                    0,
-                    0,
-                    FW_NORMAL,
-                    FALSE,
-                    FALSE,
-                    FALSE,
-                    DEFAULT_CHARSET,
-                    OUT_DEFAULT_PRECIS,
-                    CLIP_DEFAULT_PRECIS,
-                    DEFAULT_QUALITY,
-                    DEFAULT_PITCH,
-                    "Segoe UI"
-                );
+    HFONT titleFont =
+        CreateFont(
+            22,
+            0,
+            0,
+            0,
+            FW_BOLD,
+            FALSE,
+            FALSE,
+            FALSE,
+            DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS,
+            CLIP_DEFAULT_PRECIS,
+            DEFAULT_QUALITY,
+            DEFAULT_PITCH,
+            "Segoe UI"
+        );
 
-            oldFont =
-                (HFONT)SelectObject(
-                    dc,
-                    subtitleFont
-                );
+    HFONT oldFont =
+        (HFONT)SelectObject(
+            dc,
+            titleFont
+        );
 
-            RECT subtitleRect =
-                {
-                    0,
-                    85,
-                    rect.right,
-                    120
-                };
+    const char* titles[] =
+    {
+        "CONTROLS",
+        "MELODY",
+        "DRUMS",
+        "EFFECTS"
+    };
 
-            DrawText(
-                dc,
-                "song.txt",
-                -1,
-                &subtitleRect,
-                DT_CENTER |
-                DT_SINGLELINE
-            );
+    for (int i = 0; i < 4; i++)
+    {
+        RECT titleRect =
+        {
+            i * columnWidth,
+            20,
+            (i + 1) * columnWidth,
+            55
+        };
 
-            SelectObject(
-                dc,
-                oldFont
-            );
+        DrawText(
+            dc,
+            titles[i],
+            -1,
+            &titleRect,
+            DT_CENTER |
+            DT_SINGLELINE
+        );
+    }
 
-            DeleteObject(
-                subtitleFont
-            );
+    SelectObject(
+        dc,
+        oldFont
+    );
 
-            EndPaint(
-                window,
-                &ps
-            );
+    DeleteObject(titleFont);
 
-            break;
-        }
+    EndPaint(
+        window,
+        &ps
+    );
+
+    break;
+}
 
         case WM_DESTROY:
         {
@@ -1088,42 +1118,42 @@ int WINAPI WinMain(
     // --------------------------------------------------------
 
     playButton =
-        CreateWindow(
-            "BUTTON",
-            "PLAY",
-            WS_VISIBLE |
-            WS_CHILD |
-            BS_PUSHBUTTON,
-            300,
-            180,
-            300,
-            80,
-            window,
-            (HMENU)1,
-            instance,
-            nullptr
-        );
+    CreateWindow(
+        "BUTTON",
+        "PLAY",
+        WS_VISIBLE |
+        WS_CHILD |
+        BS_PUSHBUTTON,
+        25,
+        70,
+        175,
+        60,
+        window,
+        (HMENU)1,
+        instance,
+        nullptr
+    );
 
     // --------------------------------------------------------
     // LOOP BUTTON
     // --------------------------------------------------------
 
     loopButton =
-        CreateWindow(
-            "BUTTON",
-            "LOOP: OFF",
-            WS_VISIBLE |
-            WS_CHILD |
-            BS_PUSHBUTTON,
-            350,
-            290,
-            200,
-            55,
-            window,
-            (HMENU)2,
-            instance,
-            nullptr
-        );
+    CreateWindow(
+        "BUTTON",
+        "LOOP: OFF",
+        WS_VISIBLE |
+        WS_CHILD |
+        BS_PUSHBUTTON,
+        25,
+        145,
+        175,
+        50,
+        window,
+        (HMENU)2,
+        instance,
+        nullptr
+    );
 
     ShowWindow(
         window,
